@@ -1,0 +1,11 @@
+1
+00:00:00,500 --> 00:00:03,500
+♪ Welcome to ChatCut ♪
+
+2
+00:00:03,800 --> 00:00:07,000
+Add lyrics and subtitles with any font
+
+3
+00:00:07,300 --> 00:00:10,500
+Style them on the right, then Export Video 🎬

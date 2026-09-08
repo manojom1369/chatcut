@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChatCut — Lyrics &amp; Subtitles Studio</title>
+<meta name="description" content="ChatCut: add lyrics and subtitles with beautiful custom fonts to any video. Edit, style, preview and export — free, in your browser." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700;900&family=Poppins:wght@400;600;700;800&family=Anton&family=Bebas+Neue&family=Dancing+Script:wght@600;700&family=Noto+Sans:wght@400;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✂️</text></svg>" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">✂️</span>
+    <div>
+      <h1>ChatCut</h1>
+      <p>Lyrics &amp; Subtitles Studio</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <label class="btn ghost file-btn">📥 Import captions
+      <input type="file" id="importCaptions" accept=".srt,.vtt,.lrc,.txt,.json" hidden />
+    </label>
+    <div class="dropdown">
+      <button class="btn ghost" id="exportMenuBtn">💾 Export ⏷</button>
+      <div class="dropdown-menu" id="exportMenu" hidden>
+        <button data-export="srt">📄 Subtitles (.srt)</button>
+        <button data-export="vtt">🌐 Web captions (.vtt)</button>
+        <button data-export="lrc">🎵 Lyrics (.lrc)</button>
+        <button data-export="json">🗂️ Project (.json)</button>
+      </div>
+    </div>
+    <button class="btn primary" id="exportVideoBtn">🎬 Export Video</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- LEFT: cues editor -->
+  <section class="panel cues-panel">
+    <div class="panel-head">
+      <h2>📝 Lyrics / Subtitles <span class="count" id="cueCount">0</span></h2>
+      <div class="row gap">
+        <button class="btn small" id="addCueBtn">＋ Add line</button>
+        <button class="btn small ghost" id="lyricsToolBtn">🎤 Lyrics wizard</button>
+      </div>
+    </div>
+    <div class="cues-toolbar row gap">
+      <input type="search" id="cueSearch" placeholder="🔍 Search lines…" />
+      <select id="sortCues" title="Sort">
+        <option value="start">Sort: time</option>
+        <option value="recent">Sort: newest</option>
+      </select>
+    </div>
+    <div class="cues-list" id="cuesList">
+      <div class="empty">
+        <p>🎬 No captions yet</p>
+        <span>Add lines manually, import .srt/.vtt/.lrc, or use the Lyrics wizard.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CENTER: preview -->
+  <section class="preview-area">
+    <div class="video-wrap" id="videoWrap">
+      <div class="dropzone" id="dropzone">
+        <div class="dz-inner">
+          <div class="dz-icon">🎞️</div>
+          <h3>Drop a video here</h3>
+          <p>or</p>
+          <div class="row gap center">
+            <label class="btn primary file-btn">📁 Choose video
+              <input type="file" id="videoInput" accept="video/*" hidden />
+            </label>
+            <button class="btn ghost" id="sampleVideoBtn">▶ Try sample video</button>
+          </div>
+          <small>MP4 / WebM / MOV — processed 100% in your browser, nothing is uploaded.</small>
+        </div>
+      </div>
+      <video id="video" playsinline crossorigin="anonymous" hidden></video>
+      <div class="subtitle-overlay" id="overlay" hidden>
+        <div class="subtitle-box" id="subtitleBox"></div>
+      </div>
+      <div class="preview-badge" id="previewBadge" hidden>PREVIEW</div>
+    </div>
+
+    <div class="transport">
+      <button class="btn icon" id="playBtn" title="Play/Pause (Space)">▶</button>
+      <span class="time" id="timeLabel">00:00.0 / 00:00.0</span>
+      <input type="range" id="seekBar" min="0" max="1000" value="0" />
+      <button class="btn small ghost" id="addCueAtBtn" title="Add a line starting at current time">＋ line @ ⏱</button>
+      <button class="btn small ghost" id="changeVideoBtn" hidden>🔁 Change video</button>
+    </div>
+    <div class="hint">💡 Tip: click any line to jump the video there. Active line glows while playing.</div>
+  </section>
+
+  <!-- RIGHT: style -->
+  <aside class="panel style-panel">
+    <div class="panel-head"><h2>🎨 Font &amp; Style</h2></div>
+    <div class="style-scroll">
+      <div class="group">
+        <label class="glabel">Style presets</label>
+        <div class="presets" id="presetRow">
+          <button data-preset="youtube">▶ YouTube</button>
+          <button data-preset="tiktok">♪ TikTok Pop</button>
+          <button data-preset="karaoke">🎤 Karaoke</button>
+          <button data-preset="cinematic">🎞 Cinematic</button>
+          <button data-preset="minimal">◻ Minimal</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="glabel">Font family</label>
+        <select id="fontFamily"></select>
+        <label class="btn small ghost file-btn full">⬆ Upload custom font (.ttf/.otf/.woff)
+          <input type="file" id="fontUpload" accept=".ttf,.otf,.woff,.woff2" hidden />
+        </label>
+      </div>
+
+      <div class="group grid2">
+        <div><label class="glabel">Size <output id="fontSizeOut">42px</output></label>
+          <input type="range" id="fontSize" min="16" max="120" value="42" /></div>
+        <div><label class="glabel">Weight</label>
+          <select id="fontWeight">
+            <option value="400">Regular</option>
+            <option value="500">Medium</option>
+            <option value="600">SemiBold</option>
+            <option value="700" selected>Bold</option>
+            <option value="800">ExtraBold</option>
+            <option value="900">Black</option>
+          </select></div>
+      </div>
+      <div class="group grid2">
+        <div><label class="glabel">Text color</label><input type="color" id="fontColor" value="#ffffff" /></div>
+        <div><label class="glabel">Highlight <small>(karaoke/pop)</small></label><input type="color" id="hlColor" value="#ffe600" /></div>
+      </div>
+      <div class="group row gap">
+        <label class="check"><input type="checkbox" id="fontItalic" /> <i>Italic</i></label>
+        <label class="check"><input type="checkbox" id="fontUppercase" /> AA Uppercase</label>
+      </div>
+
+      <div class="group">
+        <label class="glabel">Effect</label>
+        <select id="effect">
+          <option value="none">None — plain caption</option>
+          <option value="karaoke" selected>🎤 Karaoke — word highlight</option>
+          <option value="pop">♪ Pop — word-by-word pop</option>
+          <option value="fade">✨ Fade in/out</option>
+        </select>
+      </div>
+
+      <div class="group grid2">
+        <div><label class="glabel">Outline <output id="strokeWOut">2px</output></label>
+          <input type="range" id="strokeW" min="0" max="10" value="2" /></div>
+        <div><label class="glabel">Outline color</label><input type="color" id="strokeColor" value="#000000" /></div>
+      </div>
+      <div class="group grid2">
+        <div><label class="glabel">Shadow <output id="shadowOut">4px</output></label>
+          <input type="range" id="shadow" min="0" max="20" value="4" /></div>
+        <div><label class="glabel">Shadow color</label><input type="color" id="shadowColor" value="#000000" /></div>
+      </div>
+
+      <div class="group">
+        <label class="check"><input type="checkbox" id="bgEnabled" checked /> Background box</label>
+        <div class="grid2" style="margin-top:8px">
+          <div><label class="glabel">Box color</label><input type="color" id="bgColor" value="#000000" /></div>
+          <div><label class="glabel">Opacity <output id="bgOpOut">55%</output></label>
+            <input type="range" id="bgOpacity" min="0" max="100" value="55" /></div>
+        </div>
+        <div class="grid2" style="margin-top:8px">
+          <div><label class="glabel">Padding <output id="padOut">12px</output></label>
+            <input type="range" id="padding" min="0" max="40" value="12" /></div>
+          <div><label class="glabel">Roundness <output id="radiusOut">10px</output></label>
+            <input type="range" id="radius" min="0" max="40" value="10" /></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="glabel">Position</label>
+        <div class="seg" id="vPosSeg">
+          <button data-v="top">⬆ Top</button>
+          <button data-v="middle">⏺ Middle</button>
+          <button data-v="bottom" class="on">⬇ Bottom</button>
+        </div>
+        <label class="glabel" style="margin-top:10px">Nudge <output id="vOffOut">6%</output></label>
+        <input type="range" id="vOffset" min="0" max="30" value="6" />
+        <label class="glabel" style="margin-top:10px">Align</label>
+        <div class="seg" id="alignSeg">
+          <button data-a="left">⬅ Left</button>
+          <button data-a="center" class="on">⏺ Center</button>
+          <button data-a="right">Right ➡</button>
+        </div>
+      </div>
+
+      <div class="group grid2">
+        <div><label class="glabel">Line height <output id="lhOut">1.25</output></label>
+          <input type="range" id="lineHeight" min="100" max="200" value="125" /></div>
+        <div><label class="glabel">Max width <output id="maxWOut">86%</output></label>
+          <input type="range" id="maxWidth" min="40" max="100" value="86" /></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- Lyrics wizard modal -->
+<div class="modal" id="lyricsModal" hidden>
+  <div class="modal-card">
+    <h3>🎤 Lyrics wizard</h3>
+    <p>Paste plain lyrics — each line becomes a timed caption.</p>
+    <textarea id="lyricsText" rows="8" placeholder="Paste lyrics here, one line per caption…"></textarea>
+    <div class="grid3">
+      <div><label class="glabel">Start at (sec)</label><input type="number" id="lyricsStart" value="0" min="0" step="0.5" /></div>
+      <div><label class="glabel">Seconds / line</label><input type="number" id="lyricsDur" value="3" min="0.5" step="0.5" /></div>
+      <div><label class="glabel">Gap (sec)</label><input type="number" id="lyricsGap" value="0.3" min="0" step="0.1" /></div>
+    </div>
+    <div class="row gap end">
+      <button class="btn ghost" id="lyricsCancel">Cancel</button>
+      <button class="btn primary" id="lyricsApply">✨ Create captions</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal" id="exportModal" hidden>
+  <div class="modal-card">
+    <h3>🎬 Export video with burned-in lyrics &amp; subtitles</h3>
+    <div id="exportSetup">
+      <div class="grid2">
+        <div><label class="glabel">Format</label>
+          <select id="expFormat">
+            <option value="auto">Auto (best available)</option>
+            <option value="mp4">MP4 (H.264, if supported)</option>
+            <option value="webm">WebM</option>
+          </select></div>
+        <div><label class="glabel">Quality</label>
+          <select id="expQuality">
+            <option value="8000000">High — 8 Mbps</option>
+            <option value="12000000">Ultra — 12 Mbps</option>
+            <option value="4000000" selected>Medium — 4 Mbps</option>
+            <option value="2000000">Small file — 2 Mbps</option>
+          </select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="expAudio" checked /> Include original audio</label>
+      <p class="fine">Export plays your video once in realtime and records it with the styled captions burned in. Keep this tab visible until it finishes.</p>
+      <div class="row gap end">
+        <button class="btn ghost" id="exportCancel">Cancel</button>
+        <button class="btn primary" id="exportStart">⏺ Start export</button>
+      </div>
+    </div>
+    <div id="exportProgress" hidden>
+      <div class="progress"><div class="bar" id="expBar"></div></div>
+      <p id="expLabel">Recording… 0%</p>
+      <div class="row gap end"><button class="btn ghost" id="exportAbort">⛔ Cancel export</button></div>
+    </div>
+    <div id="exportDone" hidden>
+      <p>✅ Done! Preview your exported video:</p>
+      <video id="expPreview" controls playsinline></video>
+      <div class="row gap end">
+        <a class="btn primary" id="expDownload" download="chatcut-export.webm">⬇ Download</a>
+        <button class="btn ghost" id="exportClose">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
