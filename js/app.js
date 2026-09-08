@@ -292,7 +292,8 @@ const PRESETS = {
   tiktok:    { fontFamily: 'Poppins', fontSize: 58, fontWeight: '800', fontColor: '#ffffff', hlColor: '#ffe600', italic: false, uppercase: false, effect: 'pop', strokeW: 3, strokeColor: '#000000', shadow: 5, shadowColor: '#000000', bgEnabled: false, bgColor: '#000000', bgOpacity: 55, padding: 12, radius: 10, vPos: 'middle', vOffset: 6, align: 'center', lineHeight: 1.3, maxWidth: 90 },
   karaoke:   { fontFamily: 'Poppins', fontSize: 46, fontWeight: '700', fontColor: '#ffffff', hlColor: '#ffe600', italic: false, uppercase: false, effect: 'karaoke', strokeW: 2, strokeColor: '#000000', shadow: 4, shadowColor: '#000000', bgEnabled: true, bgColor: '#000000', bgOpacity: 55, padding: 12, radius: 10, vPos: 'bottom', vOffset: 6, align: 'center', lineHeight: 1.25, maxWidth: 86 },
   cinematic: { fontFamily: 'Playfair Display', fontSize: 38, fontWeight: '600', fontColor: '#f5f0e6', hlColor: '#ffd166', italic: true, uppercase: false, effect: 'fade', strokeW: 0, strokeColor: '#000000', shadow: 6, shadowColor: '#000000', bgEnabled: false, bgColor: '#000000', bgOpacity: 55, padding: 12, radius: 10, vPos: 'bottom', vOffset: 8, align: 'center', lineHeight: 1.4, maxWidth: 70 },
-  minimal:   { fontFamily: 'Inter', fontSize: 30, fontWeight: '500', fontColor: '#ffffff', hlColor: '#22d3ee', italic: false, uppercase: false, effect: 'none', strokeW: 0, strokeColor: '#000000', shadow: 0, shadowColor: '#000000', bgEnabled: true, bgColor: '#000000', bgOpacity: 65, padding: 10, radius: 8, vPos: 'bottom', vOffset: 5, align: 'center', lineHeight: 1.3, maxWidth: 80 },
+  minimal:   { fontFamily: 'Inter', fontSize: 30, fontWeight: '500', fontColor: '#ffffff', hlColor: '#22d3ee', italic: false, uppercase: false, effect: 'none', depth3d: 5, color3d: '#7f1d1d', strokeW: 0, strokeColor: '#000000', shadow: 0, shadowColor: '#000000', bgEnabled: true, bgColor: '#000000', bgOpacity: 65, padding: 10, radius: 8, vPos: 'bottom', vOffset: 5, align: 'center', lineHeight: 1.3, maxWidth: 80 },
+  tdpop:     { fontFamily: 'Anton', fontSize: 56, fontWeight: '400', fontColor: '#ffe600', hlColor: '#ff6b6b', italic: false, uppercase: true, effect: 'threed', depth3d: 6, color3d: '#7f1d1d', strokeW: 2, strokeColor: '#000000', shadow: 6, shadowColor: '#000000', bgEnabled: false, bgColor: '#000000', bgOpacity: 55, padding: 12, radius: 10, vPos: 'bottom', vOffset: 6, align: 'center', lineHeight: 1.3, maxWidth: 88 },
 };
 
 $('presetRow').addEventListener('click', (e) => {
@@ -319,6 +320,8 @@ function syncStyleControls() {
   $('fontItalic').checked = s.italic;
   $('fontUppercase').checked = s.uppercase;
   $('effect').value = s.effect;
+  $('depth3d').value = s.depth3d; $('depth3dOut').textContent = s.depth3d + 'px';
+  $('color3d').value = s.color3d;
   $('strokeW').value = s.strokeW; $('strokeWOut').textContent = s.strokeW + 'px';
   $('strokeColor').value = s.strokeColor;
   $('shadow').value = s.shadow; $('shadowOut').textContent = s.shadow + 'px';
@@ -454,7 +457,16 @@ function updateOverlay() {
   const strokeScale = fpx / 42;
   box.style.webkitTextStroke = s.strokeW > 0 ? `${Math.max(0.5, s.strokeW * strokeScale * 0.5)}px ${s.strokeColor}` : '0px transparent';
   box.style.paintOrder = 'stroke fill';
-  box.style.textShadow = s.shadow > 0 ? `0 ${Math.max(1, s.shadow * strokeScale * 0.4)}px ${s.shadow * strokeScale * 0.8}px ${s.shadowColor}` : 'none';
+  if (s.effect === 'threed' && s.depth3d > 0) {
+    // 3D extrude stack + soft drop shadow
+    const layers = [];
+    const step = Math.max(0.6, strokeScale * 0.9);
+    for (let i = 1; i <= s.depth3d; i++) layers.push(`${(i * step).toFixed(1)}px ${(i * step).toFixed(1)}px 0 ${s.color3d}`);
+    if (s.shadow > 0) layers.push(`0 ${(s.depth3d * step + s.shadow * strokeScale * 0.4).toFixed(1)}px ${(s.shadow * strokeScale * 0.8).toFixed(1)}px ${s.shadowColor}`);
+    box.style.textShadow = layers.join(',');
+  } else {
+    box.style.textShadow = s.shadow > 0 ? `0 ${Math.max(1, s.shadow * strokeScale * 0.4)}px ${s.shadow * strokeScale * 0.8}px ${s.shadowColor}` : 'none';
+  }
   box.style.opacity = s.effect === 'fade' ? String(0.25 + 0.75 * Math.sin(Math.PI * Math.min(1, Math.max(0, p)))) : '1';
 }
 
@@ -693,6 +705,15 @@ function drawCaptionFrame(ctx, W, H, t) {
       let popScale = 1;
       if (s.effect === 'karaoke' && wi <= activeIdx) color = s.hlColor;
       if (s.effect === 'pop' && wi === activeIdx) { color = s.hlColor; popScale = 1.18; }
+      // 3D extrude: paint offset copies underneath, then face on top
+      if (s.effect === 'threed' && s.depth3d > 0) {
+        ctx.save();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.fillStyle = s.color3d;
+        const step3d = Math.max(0.6, (fontPx / 42) * 0.9);
+        for (let i = s.depth3d; i >= 1; i--) ctx.fillText(word, x + i * step3d, y + i * step3d);
+        ctx.restore();
+      }
       ctx.save();
       if (popScale !== 1) {
         const ww = ctx.measureText(word).width;

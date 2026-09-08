@@ -13,7 +13,7 @@ Add **lyrics and subtitles with beautiful custom fonts** to any video — free, 
   - Size, weight, italic, uppercase, text + highlight colors
   - Outline, drop shadow, background box (color / opacity / padding / roundness)
   - Position (top / middle / bottom + nudge), alignment, line-height, max width
-  - Effects: **Karaoke word highlight**, **TikTok pop**, **Fade**, plus 5 one-click presets
+  - Effects: **Karaoke word highlight**, **TikTok pop**, **Fade**, **🧱 3D block text** (depth + color), plus 6 one-click presets incl. **3D Pop**
 - 👀 **Live WYSIWYG preview** — exactly what you see is what gets exported
 - 💾 **Export captions** — `.srt` `.vtt` `.lrc` + project `.json`
 - 🎬 **Export video** — burns styled captions into the video (MP4/WebM with original audio)
