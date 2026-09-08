@@ -821,6 +821,36 @@ $('exportAbort').addEventListener('click', () => {
 $('cueSearch').addEventListener('input', renderCues);
 $('sortCues').addEventListener('change', renderCues);
 
+/* ---------------- My Song (user's lyrics, one-click load) ---------------- */
+const MY_SONG = [
+  { start: 0.5, end: 3.85, text: 'Kila kila mani kalaavaru rani' },
+  { start: 4.0, end: 7.85, text: 'ghallughallu mane kadhaakali kaanee' },
+  { start: 8.0, end: 12.35, text: 'kallem leni kallalloni kavvintalni hello ani' },
+  { start: 12.5, end: 15.85, text: 'chal mohanaanga sukhalaku bonee' },
+  { start: 16.0, end: 19.35, text: 'chaligili annee polo mani ponee' },
+  { start: 19.5, end: 23.85, text: 'sigge leni singaaraanni chindinchanee chalo honey' },
+  { start: 24.0, end: 28.0, text: 'madhanudi paalai ponee mudirina bhaavaalannee' },
+];
+
+$('loadSongBtn').addEventListener('click', async () => {
+  // Try the LRC file first (works when served over http), fall back to built-in copy
+  let cues = null;
+  try {
+    const res = await fetch('samples/kila-kila-lyrics.lrc', { cache: 'no-store' });
+    if (res.ok) {
+      const parsed = parseLRC(await res.text());
+      if (parsed.length) cues = parsed;
+    }
+  } catch { /* file:// mode — use built-in copy */ }
+  if (!cues) cues = MY_SONG;
+  if (state.cues.length && !confirm(`Replace current ${state.cues.length} lines with your song lyrics (${cues.length} lines)?`)) return;
+  state.cues = cues.map((c) => ({ id: uid(), start: c.start, end: c.end, text: c.text }));
+  sortCues(); renderCues();
+  if (video.src) { video.currentTime = 0.01; }
+  updateOverlay();
+  toast(`🎵 Loaded your song — ${cues.length} lines`, 'ok');
+});
+
 /* ---------------- Init ---------------- */
 fillFontList();
 bindStyle();
