@@ -1,0 +1,95 @@
+QUICK-PASTE VERSION - 9:16 Vertical Reframe + 8K Color + Kinetic Typography
+(Hero & Heroine Face/Body Priority. Use when the input field is short. The full brief is in
+vertical-9x16-hero-heroine-master-prompt.md.)
+
+---
+
+You are a senior colorist and motion-graphics designer finishing a vertical music video.
+
+GOAL: Convert the supplied footage from its original aspect ratio to 9:16, graded in 8K and
+finished with kinetic lyric typography, keeping the HERO AND HEROINE's faces and bodies as the
+constant visual center of gravity.
+
+REFRAME (9:16):
+- Work from the original 8K master. A native 9:16 window in an 8K 16:9 frame is only
+  2430x4320, so treat this as a re-composition, not a crop. Never letterbox, never stretch,
+  never auto-crop unsupervised.
+- Anchor on the EYES: place them on the upper third, within the middle band of the frame.
+  Never cut through a face, chin, mouth, ear, or forehead. Land body cuts between joints
+  (mid-thigh, above knee, mid-forearm) - never at wrist, elbow, knee, or ankle.
+- Keep 4-7% headroom, 3-5% footroom on full-body shots, and 1/3 look room in the direction
+  of the subject's gaze. Preserve eyeline matches; never mirror a shot to force composition.
+- Two-shots: alternate hero coverage and heroine coverage, cutting to the LISTENER's reaction
+  on the last word of each line. Every emotional peak is framed tight enough to show eyes and
+  mouth and held long enough to land.
+- Wide shots: slow vertical reveal or matched two-band split-stack - never a letterboxed strip.
+- Reframe per shot with eased keyframes (6-12 frame eases), tracked and hand-corrected for
+  drift, no jitter or rubber-banding. Supersample: keyframe in 8K, deliver downscaled.
+- Keep faces and all key action out of the top 12% and bottom 25% of the frame (platform UI).
+
+COLOR (8K):
+- Correct on the native 8K/RAW source in 32-bit float on a scene-referred timeline
+  (ACEScct or DaVinci Wide Gamut) before any creative grade.
+- Primary: exposure with retained highlight headroom, black point set, contrast pivoted on
+  skin luminance, white balance neutralized on a known reference, smooth highlight rolloff,
+  no clipping, no crushed shadows - dark skin and dark hair must keep texture.
+- Secondary: soft tracked windows on each face for a subtle midtone lift, gentle warmth
+  inside the skin-tone vector (11 o'clock on the vectorscope), shine control, subtle eye
+  contrast with catchlight glow, light lip saturation at the emotional peaks. Keep masks
+  invisible; the hero and heroine stay the brightest, sharpest elements in frame.
+- Creative grade: one cinematic palette for the film (warm amber romance, skin-protected
+  teal & orange, desaturated moody, Kodak 2383 emulation, pastel dream, sun-baked desert, or
+  night neon), applied with film emulation, halation, finely scaled grain, and a 5-12% vignette.
+  Use LUTs as a starting point, never as the finish.
+- Consistency: build a stills gallery of hero frames and split-screen match every shot -
+  skin first, then luminance, saturation, contrast - across day/night, interiors/exteriors,
+  and different cameras.
+- Preserve 8K clarity: no added noise, no banding, no sharpening halos, no 8-bit round trips.
+  Export an 8K vertical master (4320x7680 ProRes 4444 XQ or equivalent) plus 4K and
+  1080x1920 platform versions, and before/after stills.
+
+KINETIC TYPOGRAPHY:
+- Build one type system: a display face for the song's emotional voice, a support face, and
+  an optional accent face. Match the mood (bold/anthemic, modern pop, elegant romantic,
+  urgent condensed). Lock weight, tracking, leading, case, and alignment; save every animation
+  as a reusable preset.
+- Sync precisely: derive the BPM grid, place beat markers, and snap every text IN/OUT to a
+  beat. Text arrives 2-4 frames before the vocal attack or exactly on the downbeat. Exit on
+  the breath or the beat. Minimum hold 0.8 s. Per-syllable reveals for fast delivery,
+  per-line for legato. Check sync frame by frame on the waveform; 1 frame of drift is visible.
+- Animate with fades, slides, scale pops (92% -> 100% with slight overshoot), mask wipes,
+  per-character stagger, typewriter, karaoke fill, and emphasis moves on keywords. Custom
+  easing on every keyframe; 180-degree motion blur; 1-2 signature moves per section, never a
+  new style per line. No spinning type, no unmotivated fly-ins.
+- Add depth: soft drop shadows, glow, stroke for contrast, subtle 3D extrusion, texture,
+  light wrap. Motion-track or keyframe the text to the plate. Where it serves the emotion,
+  roto the hero or heroine so a lyric passes behind their head - never across their features.
+- Legibility: max 3 lines, max 20-24 characters per line, minimum ~70 px cap height at
+  1080x1920, 4.5:1 contrast or better, soft gradient scrim or 10-25% dim behind type on busy
+  plates rather than a hard box. Never place text in the top 12% or bottom 25% dead zones,
+  and never over the hero's or heroine's eyes or mouth. Text and subject occupy different
+  vertical bands.
+
+REFERENCE MATCH:
+- Analyze the reference video and extract, explicitly: font (identify it; if unavailable or
+  unlicensed, choose the closest licensed match and say so), weight, size as a percentage of
+  frame height, tracking, leading, case, fill hex and gradient stops, stroke, shadow, glow,
+  dimensional treatment, effect layers, IN and OUT animation with durations and easing,
+  emphasis device, layout habits, and the full color palette. Reproduce the load-bearing
+  attributes and the motion signature exactly, adapting only for legibility against this film
+  and harmony with its grade. Document every deviation. Apply the locked style to every text
+  element - lyrics, ad-libs, hook repeats, title and end cards - then side-by-side test against
+  the reference in motion at full and quarter speed until the seam disappears.
+
+LYRICS:
+- Lay the supplied lyrics on the vocal line by line and word by word. Give each song section
+  a distinct but related treatment (verses restrained, choruses with the signature move and
+  full-frame emphasis words, bridge minimal). Emphasize key words with color shifts, scaling,
+  or highlighting. Repeat the hook treatment identically every time. End on a title/artist
+  card in the same system. Deliver burned-in text plus styled .srt/.ass.
+
+DELIVERY: 8K vertical master, 4K vertical master, 1080x1920 platform cuts, a clean version
+with no text, styled .srt/.ass, graded before/after stills, and a change log listing every
+reframe decision, every grade intent, every documented deviation from the reference, and
+anything you could not achieve at this quality bar. QC on a calibrated display and on a
+6-inch phone before delivery.
