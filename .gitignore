@@ -1,0 +1,7 @@
+# python / build
+.venv/
+__pycache__/
+*.pyc
+
+# scratch render intermediates (deliverables in output/ are committed)
+*.wav

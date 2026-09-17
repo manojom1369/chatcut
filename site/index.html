@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manasa Nuvvunde Chote — 9:16 Kinetic Lyric Render</title>
+<link rel="stylesheet" href="/site/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <strong>ChatCut</strong>
+    <span class="sep">/</span>
+    <span>9:16 Vertical Lyric Render</span>
+  </div>
+  <nav class="topnav">
+    <a href="#player">Player</a>
+    <a href="#rail">Timeline</a>
+    <a href="#qc">QC</a>
+    <a href="#deliver">Deliverables</a>
+    <a href="#next">Next steps</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ------------------------------------------------------------------ hero -->
+<section class="hero">
+  <h1>Manasa Nuvvunde Chote <span class="sub">· charanam</span></h1>
+  <p class="lede">
+    A working 9:16 vertical render of the charanam you supplied — script-correct Telugu
+    typography, beat-snapped cues at 90&nbsp;BPM, section-wise cinematic grading, and a
+    composition that keeps the <em>upper two-thirds clear for the hero and heroine's faces</em>.
+    The plates here are stand-ins for the 8K footage; the reframe rules already apply to them.
+  </p>
+  <div class="badges">
+    <span class="badge">9:16 · 1080×1920</span>
+    <span class="badge">30 fps</span>
+    <span class="badge">90 BPM grid</span>
+    <span class="badge">Noto Sans Telugu · 700/900</span>
+    <span class="badge warn">temp guide audio</span>
+    <span class="badge">cinematic plates · swap-in ready</span>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------------- player -->
+<section id="player" class="player-grid">
+  <div class="stage">
+    <div class="phone">
+      <video id="vid" src="/output/preview-540x960.mp4" poster="/docs/images/still-title.jpg"
+             playsinline loop muted preload="metadata"></video>
+      <div class="safe-overlay" id="safes">
+        <div class="zone prime"><span>PRIME ZONE 12–62% · hero &amp; heroine faces</span></div>
+        <div class="zone dead-top">DEAD 0–12% · platform UI</div>
+        <div class="zone dead-bottom">DEAD 75–100% · captions / CTA</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="play" class="btn primary" aria-label="play/pause">❚❚</button>
+      <button id="mute" class="btn" aria-label="mute">🔇</button>
+      <button id="safe" class="btn">Safe zones</button>
+      <div class="scrub">
+        <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="seek">
+      </div>
+      <span id="tc" class="tc">00:00.00</span>
+    </div>
+    <p class="hint">
+      The audio is an <strong>original synthetic 90&nbsp;BPM guide track</strong>, not the song —
+      it exists so the beat-synced type can be verified. Swap in the real master and the cues
+      stay put.
+    </p>
+  </div>
+
+  <aside class="caption-panel">
+    <div class="panel-head">
+      <span class="label">Live cue</span>
+      <span id="sectionPill" class="pill">A</span>
+    </div>
+    <div class="caption">
+      <p id="capTelugu" class="telugu">—</p>
+      <p id="capLatin" class="latin">—</p>
+      <p id="capMeaning" class="meaning">—</p>
+    </div>
+
+    <div class="metrics">
+      <div><span class="k">Cue</span><span id="mCue" class="v">–</span></div>
+      <div><span class="k">Beat</span><span id="mBeat" class="v">–</span></div>
+      <div><span class="k">Anim</span><span id="mAnim" class="v">–</span></div>
+      <div><span class="k">Keyword</span><span id="mKey" class="v">–</span></div>
+      <div><span class="k">Type size</span><span id="mSize" class="v">–</span></div>
+      <div><span class="k">Section palette</span><span id="mPal" class="v">–</span></div>
+    </div>
+
+    <div class="cues" id="cues" aria-label="Cue rail"></div>
+  </aside>
+</section>
+
+<!-- ----------------------------------------------------------------- rail -->
+<section id="rail" class="wide">
+  <h2>Timing map</h2>
+  <p class="note">
+    Every cue is a whole or half beat; every in/out is snapped to the 90&nbsp;BPM grid. Re-tempo
+    the show by changing <code>BPM</code> in <code>src/show_config.py</code> — the frame math follows.
+    Full table: <a href="/docs/timing-map.md">docs/timing-map.md</a>.
+  </p>
+  <div class="timeline" id="timeline"></div>
+</section>
+
+<!-- ------------------------------------------------------------------- qc -->
+<section id="qc" class="wide">
+  <h2>QC before delivery</h2>
+  <p class="note">
+    The checklist from the prompt pack, applied to this render. Ticks are stored locally in your browser.
+  </p>
+  <div class="qc-grid" id="qcGrid"></div>
+</section>
+
+<!-- -------------------------------------------------------------- deliver -->
+<section id="deliver" class="wide">
+  <h2>Deliverables</h2>
+  <div class="files">
+    <a class="file" href="/output/manasa-9x16-lyric-teaser.mp4" download>
+      <span class="fname">manasa-9x16-lyric-teaser.mp4</span>
+      <span class="fmeta">hero deliverable · 1080×1920 · 30 fps · H.264 High · AAC 320k · 49.3 s · 14.2 MB</span>
+    </a>
+    <a class="file" href="/output/manasa-9x16-clean-reframe.mp4" download>
+      <span class="fname">manasa-9x16-clean-reframe.mp4</span>
+      <span class="fmeta">clean version, no typography — composition and grade only · 8.5 MB</span>
+    </a>
+    <a class="file" href="/output/preview-540x960.mp4" download>
+      <span class="fname">preview-540x960.mp4</span>
+      <span class="fmeta">light preview copy for sharing · 3.7 MB</span>
+    </a>
+    <a class="file" href="/output/manasa-9x16-lyrics.srt" download>
+      <span class="fname">manasa-9x16-lyrics.srt</span>
+      <span class="fmeta">timed lyric cues — Telugu + transliteration</span>
+    </a>
+    <a class="file" href="/output/manasa-9x16-timeline.json" download>
+      <span class="fname">manasa-9x16-timeline.json</span>
+      <span class="fmeta">machine-readable timing map (beats, frames, seconds)</span>
+    </a>
+    <a class="file" href="/output/manasa-9x16-guide.m4a" download>
+      <span class="fname">manasa-9x16-guide.m4a</span>
+      <span class="fmeta">temp 90 BPM guide track (original, royalty-free)</span>
+    </a>
+    <a class="file" href="/prompts/vertical-9x16-hero-heroine-master-prompt.md">
+      <span class="fname">vertical-9x16-hero-heroine-master-prompt.md</span>
+      <span class="fmeta">the production prompt this render was built to</span>
+    </a>
+  </div>
+</section>
+
+<!-- ----------------------------------------------------------------- next -->
+<section id="next" class="wide">
+  <h2>What is placeholder and what is real</h2>
+  <div class="two-col">
+    <div class="card">
+      <h3>Real, ready to keep</h3>
+      <ul>
+        <li>Script-correct Telugu typesetting (HarfBuzz shaping + FreeType rasterisation — conjuncts and matras shaped properly).</li>
+        <li>The 9:16 composition rules: lyric band below the eye line, faces' prime zone untouched, platform dead zones respected.</li>
+        <li>Beat-snapped cue map, keyword emphasis, per-glyph animation presets (rise, wipe, stagger, pop, title).</li>
+        <li>Section palettes, glow/shadow/grain treatment, and the SRT/JSON deliverables.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Placeholder — replace for the real cut</h3>
+      <ul>
+        <li><strong>Backdrops:</strong> the three photographic plates (amber / moody / neon) are stand-ins for the 8K footage, supplied through <code>--plates</code>. The reframe rules, the safe zones and the grade treatment are already being applied to them exactly as they would be to your master.</li>
+        <li><strong>Audio:</strong> synthetic guide only. Re-time the lyrics to the real master's phrases.</li>
+        <li><strong>Reference match:</strong> the Drive reference could not be downloaded here, so no font/colour was borrowed from it. Run <code>reference-extraction-worksheet.md</code>, then apply.</li>
+        <li><strong>Deliverable specs:</strong> this is a 1080×1920 proof; the 8K (4320×7680) master comes from the Resolve/Baselight finish, not this Python render.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">
+    <strong>Swap-in recipe.</strong>
+    <code>src/show_config.py</code> holds the lyric sheet, the beat times and the palettes.
+    <code>src/render_kinetic.py</code> holds the animation presets plus <code>FootagePlate</code>,
+    which already does the cover-crop, the upper-third bias, the slow push and the section grade.
+    Point it at your decoded 8K frames and the typography, timing and safe zones carry over
+    unchanged:<br>
+    <code>python src/render_kinetic.py --plates "A=plate-A.jpg,B=plate-B.jpg,C=plate-C.jpg"</code>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Built with a script-correct Telugu text engine + 9:16 compositor by Arena.</span>
+  <span class="fine">Song: “Manasa Nuvvunde Chote” — film <em>Munna</em> (2007), music Mani Sharma. Lyrics shown for layout/demo purposes.</span>
+</footer>
+
+<script src="/site/app.js"></script>
+</body>
+</html>
