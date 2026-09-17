@@ -13,7 +13,9 @@
     "react-dom": "^18.3.1",
     "framer-motion": "^11.3.2",
     "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow-models/blazeface": "^0.1.0"
+    "@tensorflow-models/blazeface": "^0.1.0",
+    "@tensorflow-models/face-landmarks-detection": "^0.0.3",
+    "@mediapipe/face_mesh": "^0.4.1633559619"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
