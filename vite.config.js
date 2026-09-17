@@ -21,5 +21,13 @@ export default defineConfig({
     port: 5173,
     cors: true,
     allowedHosts: true
+  },
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util', '@ffmpeg/core']
+  },
+  resolve: {
+    alias: {
+      // Force browser version of ffmpeg
+    }
   }
 })
