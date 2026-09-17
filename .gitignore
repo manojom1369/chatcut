@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+*.mp4
+*.mov
+*.webm
+source.mp4
+.DS_Store
