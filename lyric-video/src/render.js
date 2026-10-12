@@ -15,7 +15,7 @@ const args = ['-y', '-f', 'image2pipe', '-framerate', String(cfg.fps), '-i', 'pi
 if (cfg.audio) args.push('-i', cfg.audio);
 args.push('-map', '0:v');
 if (cfg.audio) args.push('-map', '1:a');
-args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'medium', '-crf', '18');
+args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'faster', '-crf', '18');
 args.push('-movflags', '+faststart');
 if (cfg.audio) args.push('-c:a', 'aac', '-b:a', '192k', '-shortest');
 args.push(cfg.output);
