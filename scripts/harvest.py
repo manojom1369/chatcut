@@ -182,65 +182,94 @@ def run(cmd):
     return subprocess.run(cmd, cwd=ROOT).returncode == 0
 
 
+def mux_audio(video, audio, out, ss=None, dur=None):
+    """Attach the audio rendition to a video-only rendition."""
+    cmd = [FFMPEG, "-y", "-v", "error"]
+    if ss is not None:
+        cmd += ["-ss", f"{ss:.3f}"]
+    if dur is not None:
+        cmd += ["-t", f"{dur:.3f}"]
+    cmd += ["-i", audio, "-i", video, "-map", "1:v:0", "-map", "0:a:0",
+            "-c", "copy", "-movflags", "+faststart", out]
+    subprocess.run(cmd, check=True)
+    log(f"  muxed -> {out} ({os.path.getsize(out)} bytes)")
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--audio-itag", default="234")
     ap.add_argument("--proxy-itag", default="231")
     ap.add_argument("--src-itag", default="620")
-    ap.add_argument("--sleep", type=float, default=240.0)
+    ap.add_argument("--sleep", type=float, default=300.0)
     ap.add_argument("--max-rounds", type=int, default=1000)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     work = os.path.join(ROOT, "work")
     os.makedirs(work, exist_ok=True)
+    audio = os.path.join(work, "audio.m4a")
+    proxy_v = os.path.join(work, "proxy480.v.mp4")
     proxy = os.path.join(work, "proxy480.mp4")
+    slice_v = os.path.join(work, "slice.v.mp4")
     slice_out = os.path.join(work, "slice.mp4")
+    plan_p = os.path.join(work, "plan.json")
+    start_p = os.path.join(work, "slice_start.json")
+    final = os.path.join(ROOT, "out", "short_9x16_59s.mp4")
+
+    def grab(itag, workdir, out, t0=None, t1=None):
+        """One round at a rendition; returns True when the file exists."""
+        if os.path.exists(out):
+            return True
+        st, lo, hi = fetch_rendition(itag, workdir, t0, t1)
+        if st != "done":
+            return False
+        _, segs, _ = parse_playlist(os.path.join(workdir, "index.m3u8"))
+        concat(workdir, lo, hi, out)
+        json.dump({"start": segs[lo][0], "end": segs[hi][0] + segs[hi][1]},
+                  open(out + ".json", "w"))
+        return True
 
     for rnd in range(1, args.max_rounds + 1):
         log(f"=== round {rnd} ===")
         blocked = False
 
-        # 1. analysis rendition (small, 480p)
-        if not os.path.exists(proxy):
-            st, lo, hi = fetch_rendition(args.proxy_itag, os.path.join(work, "p_proxy"))
-            if st == "done":
-                _, segs, _ = parse_playlist(os.path.join(work, "p_proxy", "index.m3u8"))
-                concat(os.path.join(work, "p_proxy"), 0, len(segs) - 1, proxy)
-            else:
-                blocked = True
+        if not grab(args.audio_itag, os.path.join(work, "p_audio"), audio):
+            blocked = True
 
-        # 2. window selection
-        if os.path.exists(proxy) and not os.path.exists(os.path.join(work, "plan.json")):
+        if not grab(args.proxy_itag, os.path.join(work, "p_proxy"), proxy_v):
+            blocked = True
+        elif os.path.exists(audio) and not os.path.exists(proxy):
+            mux_audio(proxy_v, audio, proxy)
+
+        if os.path.exists(proxy) and not os.path.exists(plan_p):
             run([PY, "scripts/analyze.py", "--video", proxy,
                  "--out", os.path.join(work, "analysis.json")])
-            run([PY, "scripts/plan_cut.py", "--analysis", os.path.join(work, "analysis.json"),
-                 "--out", os.path.join(work, "plan.json")])
+            run([PY, "scripts/plan_cut.py", "--analysis",
+                 os.path.join(work, "analysis.json"), "--out", plan_p])
 
-        # 3. high-resolution slice of just that window
-        if os.path.exists(os.path.join(work, "plan.json")) and not os.path.exists(slice_out):
-            plan = json.load(open(os.path.join(work, "plan.json")))
+        if os.path.exists(plan_p) and not os.path.exists(slice_v):
+            plan = json.load(open(plan_p))
             s0 = max(0.0, plan["start"] - 3.0)
             s1 = plan["start"] + plan["duration"] + 3.0
-            st, lo, hi = fetch_rendition(args.src_itag, os.path.join(work, "p_slice"), s0, s1)
-            if st == "done":
-                init, segs, _ = parse_playlist(os.path.join(work, "p_slice", "index.m3u8"))
-                concat(os.path.join(work, "p_slice"), lo, hi, slice_out)
-                json.dump({"slice_start": segs[lo][0]},
-                          open(os.path.join(work, "slice_start.json"), "w"))
-            else:
+            if not grab(args.src_itag, os.path.join(work, "p_slice"), slice_v, s0, s1):
                 blocked = True
 
-        # 4. final render
-        if os.path.exists(slice_out) and not os.path.exists(os.path.join(ROOT, "out", "short_9x16_59s.mp4")):
+        if os.path.exists(slice_v) and os.path.exists(audio) and not os.path.exists(slice_out):
+            info = json.load(open(slice_v + ".json"))
+            mux_audio(slice_v, audio, slice_out,
+                      ss=info["start"], dur=info["end"] - info["start"])
+
+        if os.path.exists(slice_out) and not os.path.exists(final):
             run([PY, "scripts/analyze.py", "--video", slice_out,
                  "--out", os.path.join(work, "slice_analysis.json")])
-            run([PY, "scripts/plan_cut.py", "--analysis", os.path.join(work, "slice_analysis.json"),
+            run([PY, "scripts/plan_cut.py", "--analysis",
+                 os.path.join(work, "slice_analysis.json"),
                  "--out", os.path.join(work, "slice_plan.json")])
-            run(["bash", "scripts/render.sh", os.path.join(work, "slice_plan.json"),
-                 slice_out, os.path.join(ROOT, "out", "short_9x16_59s.mp4")])
+            run(["bash", "scripts/render.sh",
+                 os.path.join(work, "slice_plan.json"), slice_out, final])
 
-        if os.path.exists(os.path.join(ROOT, "out", "short_9x16_59s.mp4")):
-            log("DONE")
+        if os.path.exists(final):
+            log("DONE -> " + final)
             return 0
         if args.dry_run:
             return 0
