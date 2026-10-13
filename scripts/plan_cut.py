@@ -170,21 +170,25 @@ def _balanced_sum(terms):
     return terms[0]
 
 
-def crop_expression(seg_x, dur, fps):
-    """Piecewise-linear crop x as a flat sum of clamped ramps."""
+def crop_expression(seg_x, dur, fps, eps=1e-4):
+    """Piecewise-linear crop x as a flat sum of clamped ramps.
+
+    `seg_x` is normalised (0..1 across the pan range) and `eps` is the
+    smallest ramp worth emitting, in those same units.
+    """
     n_seg = len(seg_x) - 1
     terms = []
     for i in range(n_seg):
         d = seg_x[i + 1] - seg_x[i]
-        if abs(d) < 0.05:
+        if abs(d) < eps:
             continue
         n0 = int(round(i * dur / n_seg * fps))
         n1 = int(round((i + 1) * dur / n_seg * fps))
         dn = max(1, n1 - n0)
-        terms.append(f"({d:.1f}*min(max((n-{n0})/{dn},0),1))")
+        terms.append(f"({d:.6f}*min(max((n-{n0})/{dn},0),1))")
     if not terms:
-        return f"{seg_x[0]:.1f}"
-    return f"{seg_x[0]:.1f}+" + _balanced_sum(terms)
+        return f"{seg_x[0]:.6f}"
+    return f"{seg_x[0]:.6f}+" + _balanced_sum(terms)
 
 
 def score_windows(samples, cuts, loud_at, dur, dur_total):
@@ -266,9 +270,16 @@ def main():
     frame_x = [interp(htimes, xs, start + (i + 0.5) / OUT_FPS)
                for i in range(n_frames)]
 
+    # Normalised trajectory (0..1 across the available pan range) so the same
+    # plan renders correctly from a 480p analysis proxy or a 4K master.
+    denom = float(max_x) if max_x > 0 else 1.0
+    xs_norm = [min(1.0, max(0.0, x / denom)) for x in xs]
     n_seg = max(1, int(round(dur / SEG)))
-    seg_x = [interp(htimes, xs, start + i * dur / n_seg) for i in range(n_seg + 1)]
+    seg_x = [interp(htimes, xs_norm, start + i * dur / n_seg)
+             for i in range(n_seg + 1)]
     expr = crop_expression(seg_x, dur, OUT_FPS)
+    frame_x_norm = [interp(htimes, xs_norm, start + (i + 0.5) / OUT_FPS)
+                    for i in range(n_frames)]
 
     plan = {
         "source": a["video"],
@@ -287,7 +298,8 @@ def main():
         "hero_detection_ratio": round(det_ratio, 3),
         "x_min": round(min(frame_x), 1),
         "x_max": round(max(frame_x), 1),
-        "crop_x_expression": expr,
+        "crop_x_norm_expression": expr,
+        "frame_x_norm": [round(v, 5) for v in frame_x_norm],
         "frame_x": [round(v, 1) for v in frame_x],
     }
     with open(args.out, "w") as fh:
