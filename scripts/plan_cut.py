@@ -188,6 +188,8 @@ def main():
                     help="force window start (seconds)")
     ap.add_argument("--duration", type=float, default=DURATION)
     ap.add_argument("--hero-hint", type=float, default=0.5)
+    ap.add_argument("--source-start", type=float, default=0.0,
+                    help="absolute time of the first frame of the source file")
     args = ap.parse_args()
 
     a = json.load(open(args.analysis))
@@ -241,6 +243,7 @@ def main():
         "source_w": src_w,
         "source_h": src_h,
         "start": round(start, 3),
+        "source_start": round(args.source_start, 3),
         "duration": round(dur, 3),
         "out_w": OUT_W,
         "out_h": OUT_H,

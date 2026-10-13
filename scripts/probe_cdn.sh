@@ -13,5 +13,5 @@ while true; do
     C="no-manifest"
   fi
   echo "$(date +%H:%M:%S) seg=$C"
-  sleep 90
+  sleep 300
 done

@@ -15,21 +15,23 @@ PY="${PY:-/workspace/tools/venv/bin/python}"
 mapfile -t V < <("$PY" - "$PLAN" <<'PYEOF'
 import json, sys
 p = json.load(open(sys.argv[1]))
-for k in ("start", "duration", "crop_w", "crop_h", "out_w", "out_h", "fps"):
+for k in ("start", "duration", "crop_w", "crop_h", "out_w", "out_h", "fps",
+              "source_start"):
     print(p[k])
 print(p["crop_x_expression"])
 PYEOF
 )
 START="${V[0]}"; DUR="${V[1]}"; CW="${V[2]}"; CH="${V[3]}"
-OW="${V[4]}"; OH="${V[5]}"; FPS="${V[6]}"; EXPR="${V[7]}"
+OW="${V[4]}"; OH="${V[5]}"; FPS="${V[6]}"; SRCSTART="${V[7]}"; EXPR="${V[8]}"
+SEEK="$("$PY" -c "print(max(0.0, $START - $SRCSTART))")"
 
 mkdir -p "$(dirname "$OUT")"
-echo "[render] $START +${DUR}s  crop ${CW}x${CH} -> ${OW}x${OH}"
+echo "[render] window ${START}s  seek ${SEEK}s +${DUR}s  crop ${CW}x${CH} -> ${OW}x${OH}"
 
 # The crop x expression contains commas, so it is quoted inside the filter
 # graph (ffmpeg filter-description level quoting).
 "$FFMPEG" -y -hide_banner -loglevel warning -stats \
-  -ss "$START" -t "$DUR" -i "$SRC" \
+  -ss "$SEEK" -t "$DUR" -i "$SRC" \
   -filter_complex "[0:v]fps=${FPS},crop=${CW}:${CH}:x='${EXPR}':y=0,scale=${OW}:${OH}:flags=lanczos,setsar=1[v]" \
   -map "[v]" -map 0:a:0? \
   -c:v libx264 -preset medium -crf 18 -profile:v high -pix_fmt yuv420p \

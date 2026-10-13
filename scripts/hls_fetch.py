@@ -82,6 +82,8 @@ def main():
     ap.add_argument("--seg-start", type=int, default=0)
     ap.add_argument("--seg-count", type=int, default=0, help="0 = all")
     ap.add_argument("--delay", type=float, default=1.2)
+    ap.add_argument("--tries", type=int, default=4)
+    ap.add_argument("--base-sleep", type=float, default=5.0)
     args = ap.parse_args()
 
     workdir = args.workdir or (args.out + ".parts")
@@ -110,14 +112,14 @@ def main():
     if init:
         ip = os.path.join(workdir, "init.bin")
         if not (os.path.exists(ip) and os.path.getsize(ip) > 0):
-            if not curl(init, ip):
+            if not curl(init, ip, tries=args.tries, base_sleep=args.base_sleep):
                 raise SystemExit("init segment failed")
         files.append(ip)
 
     for n, idx in enumerate(wanted):
         seg = os.path.join(workdir, f"seg_{idx:05d}.bin")
         if not (os.path.exists(seg) and os.path.getsize(seg) > 0):
-            if not curl(segs[idx], seg):
+            if not curl(segs[idx], seg, tries=args.tries, base_sleep=args.base_sleep, max_sleep=120.0):
                 log(f"FAILED segment {idx} (giving up for now)")
                 raise SystemExit(2)
         files.append(seg)
