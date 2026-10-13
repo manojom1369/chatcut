@@ -6,6 +6,7 @@ Outputs a single JSON document consumed by plan_cut.py.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -16,7 +17,7 @@ FFMPEG = os.environ.get("FFMPEG", "/workspace/tools/ffmpeg")
 YUNET = "/workspace/models/yunet.onnx"
 
 
-def scene_cuts(video, threshold=0.32):
+def scene_cuts(video, threshold=0.20):
     """Return list of cut timestamps using ffmpeg's scene score."""
     cmd = [FFMPEG, "-hide_banner", "-nostats", "-i", video,
            "-filter_complex",
@@ -29,13 +30,15 @@ def scene_cuts(video, threshold=0.32):
         return []
     cuts = []
     for line in out.splitlines():
-        line = line.strip()
-        if line.startswith("pts_time:"):
+        # ffmpeg prints "frame:N  pts:P  pts_time:T" on one line, so look for
+        # the field anywhere in the line rather than at the start.
+        m = re.search(r"pts_time:([0-9.]+)", line)
+        if m:
             try:
-                cuts.append(float(line.split(":", 1)[1]))
+                cuts.append(float(m.group(1)))
             except ValueError:
                 pass
-    return cuts
+    return sorted(set(cuts))
 
 
 def loudness(video, hop=0.5, sr=8000):
