@@ -1,0 +1,9 @@
+tools/
+work/
+logs/
+*.mp4
+*.mkv
+*.webm
+*.wav
+*.m4a
+!work/.gitkeep
