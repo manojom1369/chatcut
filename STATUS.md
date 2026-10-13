@@ -28,6 +28,19 @@ cannot be downloaded from this sandbox**: YouTube's video CDN returns
   9-hour idle gap.
 * Third-party mirrors reachable from here (`yewtu.be`, `invidious.nerdvpn.de`)
   answer `401`/HTML for their API and proxy endpoints.
+* Player-client sweep — every client that gets as far as a media URL is then
+  refused at the byte level, so this is not a bot check that a token can fix:
+
+  | client | outcome |
+  | --- | --- |
+  | `visionos` (default) | mints URLs, segment 403 |
+  | `visionos,ios` | mints URLs, segment 403 |
+  | `mweb` + valid GVS PO token | player OK, segment 403 |
+  | `tv_embedded`, `android_producer`, `ios_music`, `web_music`, `android_testsuite`, `android_creator`, `android_music`, `android_vr`, `android`, `tv_simply` | segment 403 |
+  | `web`, `web_safari`, `web_creator`, `tv`, `mweb` (no token) | blocked earlier, at the player response |
+
+* Transport variations all still 403: `--http1.1`, `--http2`, TLS 1.2 only,
+  `--xff US/IN/GB/DE`, and dropping/replacing/zeroing the signed `ip=` param.
 
 ## What still works
 
