@@ -35,17 +35,38 @@ def log(*a):
     print(time.strftime("[%H:%M:%S]"), *a, flush=True)
 
 
+# Different player clients are treated differently by YouTube; rotating them
+# between rounds gives the harvester more than one way to get a usable URL.
+CLIENTS = [
+    ["--extractor-args", "youtube:player_client=visionos"],
+    ["--extractor-args", "youtube:player_client=visionos,ios"],
+    ["--extractor-args", "youtube:player_client=mweb",
+     "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"],
+    ["--extractor-args", "youtube:player_client=android_vr",
+     "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"],
+    ["--extractor-args", "youtube:player_client=mweb,tv_simply",
+     "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"],
+]
+_mint_i = [0]
+
+
 def mint(itag):
-    """Return a fresh HLS media-playlist URL for `itag`."""
-    try:
-        r = subprocess.run(YDLP + ["-f", str(itag), "--print", "urls", VIDEO],
-                           capture_output=True, text=True, timeout=120)
-    except subprocess.TimeoutExpired:
-        return None
-    for line in r.stdout.splitlines():
-        line = line.strip()
-        if line.startswith("http"):
-            return line
+    """Return a fresh media-playlist URL for `itag`, rotating player clients."""
+    for attempt in range(len(CLIENTS)):
+        cargs = CLIENTS[(_mint_i[0] + attempt) % len(CLIENTS)]
+        try:
+            r = subprocess.run(
+                YDLP + cargs + ["-f", str(itag), "--print", "urls", VIDEO],
+                capture_output=True, text=True, timeout=150)
+        except subprocess.TimeoutExpired:
+            continue
+        for line in r.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("http"):
+                _mint_i[0] = (_mint_i[0] + attempt + 1) % len(CLIENTS)
+                log(f"  [{itag}] minted via {cargs[1]}")
+                return line
+    _mint_i[0] = (_mint_i[0] + 1) % len(CLIENTS)
     return None
 
 
@@ -212,7 +233,7 @@ def main():
     proxy = os.path.join(work, "proxy480.mp4")
     slice_v = os.path.join(work, "slice.v.mp4")
     slice_out = os.path.join(work, "slice.mp4")
-    plan_p = os.path.join(work, "plan.json")
+    plan_p = os.path.join(work, "harvest_plan.json")
     start_p = os.path.join(work, "slice_start.json")
     final = os.path.join(ROOT, "out", "short_9x16_59s.mp4")
 
@@ -243,9 +264,9 @@ def main():
 
         if os.path.exists(proxy) and not os.path.exists(plan_p):
             run([PY, "scripts/analyze.py", "--video", proxy,
-                 "--out", os.path.join(work, "analysis.json")])
+                 "--out", os.path.join(work, "harvest_analysis.json")])
             run([PY, "scripts/plan_cut.py", "--analysis",
-                 os.path.join(work, "analysis.json"), "--out", plan_p])
+                 os.path.join(work, "harvest_analysis.json"), "--out", plan_p])
 
         if os.path.exists(plan_p) and not os.path.exists(slice_v):
             plan = json.load(open(plan_p))
@@ -261,12 +282,12 @@ def main():
 
         if os.path.exists(slice_out) and not os.path.exists(final):
             run([PY, "scripts/analyze.py", "--video", slice_out,
-                 "--out", os.path.join(work, "slice_analysis.json")])
+                 "--out", os.path.join(work, "harvest_slice_analysis.json")])
             run([PY, "scripts/plan_cut.py", "--analysis",
-                 os.path.join(work, "slice_analysis.json"),
-                 "--out", os.path.join(work, "slice_plan.json")])
+                 os.path.join(work, "harvest_slice_analysis.json"),
+                 "--out", os.path.join(work, "harvest_slice_plan.json")])
             run(["bash", "scripts/render.sh",
-                 os.path.join(work, "slice_plan.json"), slice_out, final])
+                 os.path.join(work, "harvest_slice_plan.json"), slice_out, final])
 
         if os.path.exists(final):
             log("DONE -> " + final)
