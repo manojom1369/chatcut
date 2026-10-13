@@ -18,6 +18,7 @@ import http.cookiejar
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -89,6 +90,64 @@ def formats(info):
     return out
 
 
+def _content_length(url, jar_path):
+    """Total size of the media file behind `url` (probe fallback)."""
+    r = subprocess.run(["curl", "-sS", "-I", "--max-time", "25",
+                        "-b", jar_path, "-A", UA, url],
+                       capture_output=True, text=True, timeout=40)
+    for line in r.stdout.splitlines():
+        if line.lower().startswith("content-length:"):
+            return int(line.split(":", 1)[1].strip())
+    r = subprocess.run(["curl", "-sS", "--max-time", "25", "-b", jar_path,
+                        "-A", UA, "-r", "0-0", "-D", "-", "-o", "/dev/null", url],
+                       capture_output=True, text=True, timeout=40)
+    m = re.search(r"(?i)content-range:\s*bytes\s+0-0/(\d+)", r.stdout)
+    return int(m.group(1)) if m else None
+
+
+def parallel_download(url, out, jar_path, nconn=8, chunk=8 << 20, size=None):
+    """Fetch `out` using several concurrent range requests.
+
+    The instance throttles each connection to ~57 kB/s, so a single stream
+    crawls; N parallel ranges multiply the throughput roughly by N.
+    """
+    total = size or _content_length(url, jar_path)
+    if not total:
+        print("[mirror] unknown length, falling back to a single stream", flush=True)
+        return download(url, out, jar_path)
+    print(f"[mirror] {total} bytes, {nconn} parallel connections", flush=True)
+    tmpdir = out + ".parts"
+    os.makedirs(tmpdir, exist_ok=True)
+    ranges = [(s, min(s + chunk - 1, total - 1))
+              for s in range(0, total, chunk)]
+    pending = [(i, a, b) for i, (a, b) in enumerate(ranges)
+               if not os.path.exists(os.path.join(tmpdir, f"{i:05d}.part"))
+               or os.path.getsize(os.path.join(tmpdir, f"{i:05d}.part")) != b - a + 1]
+    while pending:
+        batch, pending = pending[:nconn], pending[nconn:]
+        procs = []
+        for i, a, b in batch:
+            dst = os.path.join(tmpdir, f"{i:05d}.part")
+            procs.append((dst, b - a + 1, subprocess.Popen(
+                ["curl", "-sS", "-L", "--fail", "--max-time", "1800",
+                 "-b", jar_path, "-A", UA, "-r", f"{a}-{b}", "-o", dst, url])))
+        for dst, want, p in procs:
+            p.wait()
+            got = os.path.getsize(dst) if os.path.exists(dst) else 0
+            if got != want:
+                print(f"[mirror] part {dst} short ({got}/{want})", flush=True)
+                return False
+        done = len(ranges) - len(pending)
+        print(f"[mirror]   {done}/{len(ranges)} chunks", flush=True)
+    with open(out, "wb") as o:
+        for i in range(len(ranges)):
+            with open(os.path.join(tmpdir, f"{i:05d}.part"), "rb") as fh:
+                for blk in iter(lambda: fh.read(1 << 20), b""):
+                    o.write(blk)
+    shutil.rmtree(tmpdir, ignore_errors=True)
+    return True
+
+
 def download(url, out, jar_path, tries=8):
     """Resumable curl download; returns True on success."""
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
@@ -112,6 +171,8 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--jar")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--connections", type=int, default=8,
+                    help="parallel range requests (the mirror throttles per connection)")
     args = ap.parse_args()
 
     base = f"https://{args.host}"
@@ -136,7 +197,8 @@ def main():
 
     url = f["url"]
     print(f"[mirror] itag {args.itag} -> {args.out}", flush=True)
-    ok = download(url, args.out, jar_path)
+    ok = parallel_download(url, args.out, jar_path, nconn=args.connections,
+                            size=int(f["clen"]) if f.get("clen") else None)
     if not ok:
         raise SystemExit("download failed")
     print(f"[mirror] wrote {args.out} ({os.path.getsize(args.out)} bytes)", flush=True)
