@@ -124,8 +124,13 @@ def build_hero_track(samples, t0, t1, hero_hint, cuts):
             prev_w = pick["w"]
             centres.append(prev_x)
             present.append(1.0)
+        elif prev_x is None:
+            # no face in this shot yet: follow the centroid of the frame-to-frame
+            # difference, which is usually where the performer is moving
+            centres.append(s.get("motion_x", hero_hint))
+            present.append(0.0)
         else:
-            centres.append(prev_x if prev_x is not None else hero_hint)
+            centres.append(prev_x)
             present.append(0.0)
         times.append(s["t"])
         shots.append(shot)

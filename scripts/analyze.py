@@ -85,7 +85,17 @@ def analyse_faces(video, target_fps=6.0, score_thresh=0.55):
             t = idx / fps
             small = cv2.resize(frame, (160, 90), interpolation=cv2.INTER_AREA)
             gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY).astype(np.float32)
-            motion = float(np.abs(gray - prev_small).mean()) if prev_small is not None else 0.0
+            if prev_small is not None:
+                diff = np.abs(gray - prev_small)
+                motion = float(diff.mean())
+                mass = float(diff.sum())
+                if mass > 1.0:
+                    xs = np.arange(diff.shape[1], dtype=np.float32)[None, :]
+                    motion_x = float((diff * xs).sum() / mass) / diff.shape[1]
+                else:
+                    motion_x = 0.5
+            else:
+                motion, motion_x = 0.0, 0.5
             prev_small = gray
 
             faces = []
@@ -107,7 +117,8 @@ def analyse_faces(video, target_fps=6.0, score_thresh=0.55):
                                   "score": 1.0})
             faces.sort(key=lambda d: -d["w"] * d["h"])
             samples.append({"i": len(samples), "t": round(t, 3),
-                            "motion": round(motion, 3), "faces": faces[:12]})
+                            "motion": round(motion, 3), "motion_x": round(motion_x, 4),
+                            "faces": faces[:12]})
         idx += 1
     cap.release()
     return {"fps": fps, "width": w, "height": h, "frames": total,
