@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Pick the 59 s window and build the "hero" tracking crop trajectory.
 
-Reads analysis.json (see analyze.py), writes plan.json and the ffmpeg crop
-expression used by render.sh.
+Reads analysis.json (see analyze.py), writes plan.json: the chosen window plus
+the ffmpeg crop-x expression used by render.sh.
 
 The source is 16:9 and the target is 9:16, so the crop keeps the full frame
 height and pans horizontally only:
+
     crop_h = src_h
     crop_w = round(src_h * 9 / 16)
     x(t)   in [0, src_w - crop_w]
+
+The hero track is built shot by shot (a shot ends at every detected scene
+cut) so that smoothing never smears motion across a cut.
 """
 import argparse
 import json
@@ -71,24 +75,32 @@ def smooth(values, fps, sigma_s, median_s):
 
 def limit_speed(values, fps, max_per_s):
     out = list(values)
+    lim = max_per_s / fps
     for i in range(1, len(out)):
         d = out[i] - out[i - 1]
-        lim = max_per_s / fps
         if abs(d) > lim:
             out[i] = out[i - 1] + math.copysign(lim, d)
     return smooth(out, fps, 0.35, 0.4)
 
 
-def build_hero_track(samples, t0, t1, hero_hint):
-    """Sticky face tracker restricted to [t0, t1].
+def build_hero_track(samples, t0, t1, hero_hint, cuts):
+    """Sticky face tracker, restarted at every scene cut.
 
-    Returns (times, centres, present) with centres in normalised source coords.
+    Returns (times, centres, present, shot) where `shot` is the index of the
+    shot each sample belongs to.
     """
-    times, centres, present = [], [], []
+    times, centres, present, shots = [], [], [], []
     prev_x, prev_w = None, None
+    shot = 0
+    cut_times = [c for c in cuts if t0 < c < t1]
+    ci = 0
     for s in samples:
         if s["t"] < t0 - 0.001 or s["t"] > t1 + 0.001:
             continue
+        while ci < len(cut_times) and cut_times[ci] <= s["t"]:
+            shot += 1
+            prev_x, prev_w = None, None  # re-acquire after the cut
+            ci += 1
         faces = [f for f in s["faces"] if f["score"] >= 0.6]
         pick = None
         if faces:
@@ -100,8 +112,7 @@ def build_hero_track(samples, t0, t1, hero_hint):
                 for f in faces:
                     cx = f["x"] + f["w"] / 2
                     cy = f["y"] + f["h"] / 2
-                    cost = abs(cx - prev_x) * 3.0
-                    cost += abs(cy - 0.5) * 0.4
+                    cost = abs(cx - prev_x) * 3.0 + abs(cy - 0.5) * 0.4
                     if prev_w:
                         cost += abs(f["w"] / prev_w - 1.0) * 0.8
                     if cost < best_cost:
@@ -117,35 +128,26 @@ def build_hero_track(samples, t0, t1, hero_hint):
             centres.append(prev_x if prev_x is not None else hero_hint)
             present.append(0.0)
         times.append(s["t"])
-    return times, centres, present
+        shots.append(shot)
+    return times, centres, present, shots
 
 
-def score_windows(samples, cuts, loud_at, dur, dur_total):
-    def face_frac(t0, t1):
-        sel = [s for s in samples if t0 <= s["t"] <= t1]
-        if not sel:
-            return 0.0
-        return sum(1 for s in sel
-                   if any(f["score"] >= 0.6 for f in s["faces"])) / len(sel)
+def track_to_crop(times, centres, shots, present, src_w, crop_w, max_x, fps_s):
+    """Convert normalised hero centres into a smoothed, speed-limited crop x."""
+    det = sum(present) / len(present) if present else 0.0
+    raw = [min(max(cx * src_w - crop_w / 2.0, 0.0), float(max_x)) for cx in centres]
 
-    def cut_density(t0, t1):
-        return sum(1 for c in cuts if t0 <= c <= t1)
-
-    cands = [c for c in cuts if c + dur <= dur_total - 0.5]
-    cands += [x * 5.0 for x in range(0, int((dur_total - dur) // 5) + 1)]
-    best, best_score = 0.0, -1e9
-    for c in sorted(set(round(v, 2) for v in cands)):
-        if c + dur > dur_total:
-            continue
-        l = sum(loud_at(c + i * 0.5) for i in range(int(dur * 2))) / (dur * 2)
-        f = face_frac(c, c + dur)
-        cd = cut_density(c, c + dur)
-        cd_score = 1.0 - min(1.0, abs(cd - 20) / 40.0)
-        snap = 0.06 if any(abs(c - cc) < 0.15 for cc in cuts) else 0.0
-        score = 0.55 * l + 0.32 * f + 0.13 * cd_score + snap
-        if score > best_score:
-            best, best_score = c, score
-    return best
+    out = list(raw)
+    start = 0
+    for i in range(1, len(shots) + 1):
+        if i == len(shots) or shots[i] != shots[start]:
+            seg = raw[start:i]
+            if len(seg) >= 2:
+                seg = smooth(seg, fps_s, sigma_s=0.55, median_s=0.5)
+                seg = limit_speed(seg, fps_s, max_per_s=max_x * 0.30)
+            out[start:i] = seg
+            start = i
+    return out, det
 
 
 def _balanced_sum(terms):
@@ -180,12 +182,39 @@ def crop_expression(seg_x, dur, fps):
     return f"{seg_x[0]:.1f}+" + _balanced_sum(terms)
 
 
+def score_windows(samples, cuts, loud_at, dur, dur_total):
+    def face_frac(t0, t1):
+        sel = [s for s in samples if t0 <= s["t"] <= t1]
+        if not sel:
+            return 0.0
+        return sum(1 for s in sel
+                   if any(f["score"] >= 0.6 for f in s["faces"])) / len(sel)
+
+    def cut_density(t0, t1):
+        return sum(1 for c in cuts if t0 <= c <= t1)
+
+    cands = [c for c in cuts if c + dur <= dur_total - 0.5]
+    cands += [x * 5.0 for x in range(0, int((dur_total - dur) // 5) + 1)]
+    best, best_score = 0.0, -1e9
+    for c in sorted(set(round(v, 2) for v in cands)):
+        if c + dur > dur_total:
+            continue
+        l = sum(loud_at(c + i * 0.5) for i in range(int(dur * 2))) / (dur * 2)
+        f = face_frac(c, c + dur)
+        cd = cut_density(c, c + dur)
+        cd_score = 1.0 - min(1.0, abs(cd - 20) / 40.0)
+        snap = 0.06 if any(abs(c - cc) < 0.15 for cc in cuts) else 0.0
+        score = 0.55 * l + 0.32 * f + 0.13 * cd_score + snap
+        if score > best_score:
+            best, best_score = c, score
+    return best
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analysis", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--start", type=float, default=None,
-                    help="force window start (seconds)")
+    ap.add_argument("--start", type=float, default=None)
     ap.add_argument("--duration", type=float, default=DURATION)
     ap.add_argument("--hero-hint", type=float, default=0.5)
     ap.add_argument("--source-start", type=float, default=0.0,
@@ -214,21 +243,19 @@ def main():
     cuts = sorted(a.get("cuts", []))
     start = args.start if args.start is not None else score_windows(
         samples, cuts, loud_at, dur, dur_total)
+    start = max(0.0, min(start, max(0.0, dur_total - dur)))
     t1 = start + dur
 
-    htimes, hcentres, present = build_hero_track(samples, start, t1, args.hero_hint)
+    htimes, hcentres, present, shots = build_hero_track(
+        samples, start, t1, args.hero_hint, cuts)
     if not htimes:
-        htimes, hcentres, present = [start, t1], [args.hero_hint] * 2, [0.0, 0.0]
-    det_ratio = sum(present) / len(present)
-    if det_ratio < 0.15:
-        hcentres = [args.hero_hint] * len(hcentres)
+        htimes, hcentres, present, shots = [start, t1], [args.hero_hint] * 2, [0.0, 0.0], [0, 0]
 
     fps_s = a["sample_fps"]
-    hcentres = smooth(hcentres, fps_s, sigma_s=0.8, median_s=0.6)
-
-    xs = [min(max(cx * src_w - crop_w / 2.0, 0.0), float(max_x)) for cx in hcentres]
-    xs = limit_speed(xs, fps_s, max_per_s=max_x * 0.22)
-    xs = [min(max(x, 0.0), float(max_x)) for x in xs]
+    xs, det_ratio = track_to_crop(htimes, hcentres, shots, present,
+                                  src_w, crop_w, max_x, fps_s)
+    if det_ratio < 0.15:
+        xs = [max_x / 2.0] * len(xs)
 
     n_frames = int(round(dur * OUT_FPS))
     frame_x = [interp(htimes, xs, start + (i + 0.5) / OUT_FPS)
@@ -251,8 +278,8 @@ def main():
         "crop_w": crop_w,
         "crop_h": src_h,
         "max_x": max_x,
+        "shots_in_window": len(set(shots)),
         "hero_detection_ratio": round(det_ratio, 3),
-        "mean_hero_x": round(sum(frame_x) / len(frame_x), 1),
         "x_min": round(min(frame_x), 1),
         "x_max": round(max(frame_x), 1),
         "crop_x_expression": expr,
@@ -261,10 +288,10 @@ def main():
     with open(args.out, "w") as fh:
         json.dump(plan, fh, indent=1)
     print(f"[plan] window {start:.2f}s .. {t1:.2f}s  crop {crop_w}x{src_h} "
-          f"(x {plan['x_min']}..{plan['x_max']}, hero det {det_ratio:.0%})")
+          f"x {plan['x_min']}..{plan['x_max']}  shots {plan['shots_in_window']} "
+          f"hero-det {det_ratio:.0%}")
     print("[plan] wrote", args.out)
 
 
 if __name__ == "__main__":
     main()
-
